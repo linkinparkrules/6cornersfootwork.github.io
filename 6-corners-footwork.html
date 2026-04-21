@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+
+    <title>6 Corners Footwork</title>
+    <style>
+        :root {
+            --bg-color: #0a0a0a;
+            --card-bg: #1c1c1e;
+            --text-color: #ffffff;
+            --primary: #0a84ff;
+            --hard-color: #ff3b30;
+            --easy-color: #ffcc00;
+            --bar-height: 60px; /* Slimmer bar */
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, system-ui, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            overflow: hidden; 
+            touch-action: manipulation;
+        }
+
+        .hidden { display: none !important; }
+
+        /* --- SETUP SCREEN --- */
+        #setup-screen {
+            width: 85%;
+            max-width: 450px;
+            margin: 0 auto;
+            padding-top: 40px;
+            text-align: center;
+            display: block;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .input-group { margin-bottom: 1rem; text-align: left; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; color: #8e8e93; font-size: 0.75rem; }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            background: var(--card-bg);
+            border: 2px solid #333;
+            color: white;
+            border-radius: 10px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+
+        .btn-grid, .diff-grid {
+            display: grid;
+            gap: 10px;
+            margin: 1rem 0;
+        }
+        .btn-grid { grid-template-columns: 1fr 1fr 1fr; }
+        .diff-grid { grid-template-columns: 1fr 1fr; }
+
+        .toggle-btn {
+            padding: 12px 5px;
+            border: 2px solid #333;
+            background: var(--card-bg);
+            color: #8e8e93;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.75rem;
+        }
+
+        .toggle-btn.active {
+            border-color: var(--primary);
+            color: white;
+            background: rgba(10, 132, 255, 0.2);
+        }
+
+        #start-btn {
+            width: 100%;
+            padding: 18px;
+            background: #30d158;
+            border: none;
+            color: white;
+            border-radius: 16px;
+            font-size: 1.2rem;
+            font-weight: 800;
+            margin-bottom: 50px;
+        }
+
+        /* --- ACTION SCREEN --- */
+        #run-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: black;
+            z-index: 2000;
+        }
+
+        #fs-overlay {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            z-index: 3000;
+        }
+
+        #fs-btn {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            backdrop-filter: blur(5px);
+        }
+
+        #countdown-text {
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12rem;
+            font-weight: 900;
+            color: var(--primary);
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        #target-rect {
+            position: absolute;
+            width: 50vw;
+            z-index: 10;
+            border-radius: 0;
+            opacity: 0;
+        }
+
+        #total-timer-display {
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 4rem;
+            font-weight: 800;
+            color: white;
+            opacity: 0.15;
+            pointer-events: none;
+        }
+
+        /* ACTION BAR FIX */
+        .action-bar {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: var(--bar-height);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #1c1c1e;
+            border-top: 1px solid #333;
+            z-index: 1000;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .bar-btn {
+            flex: 1;
+            height: 100%;
+            border: none;
+            background: transparent;
+            color: #8e8e93;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        
+        .bar-btn:active { opacity: 0.6; }
+    </style>
+</head>
+<script>
+  // Register the Service Worker for Offline Mode
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('Service Worker Registered'))
+        .catch(err => console.log('Service Worker Failed', err));
+    });
+  }
+</script>
+<body>
+
+    <div id="setup-screen">
+        <h1>6 CORNERS FOOTWORK</h1>
+        <div class="input-group">
+            <label>TOTAL DURATION (SEC)</label>
+            <input type="text" id="total-time" value="30" inputmode="decimal">
+        </div>
+        <div class="input-group">
+            <label>PHASE INTERVAL (SEC)</label>
+            <input type="text" id="phase-time" value="2.5" inputmode="decimal">
+        </div>
+        <div class="btn-grid">
+            <button class="toggle-btn" onclick="toggleSelection(this, 'court')" data-val="front">FRONT</button>
+            <button class="toggle-btn" onclick="toggleSelection(this, 'court')" data-val="mid">MID</button>
+            <button class="toggle-btn" onclick="toggleSelection(this, 'court')" data-val="back">BACK</button>
+        </div>
+        <div class="diff-grid">
+            <button class="toggle-btn" onclick="toggleSelection(this, 'diff')" data-val="easy">EASY (YELLOW)</button>
+            <button class="toggle-btn" onclick="toggleSelection(this, 'diff')" data-val="hard">HARD (RED)</button>
+        </div>
+        <button id="start-btn" onclick="startSetup()">START</button>
+    </div>
+
+    <div id="run-screen" class="hidden">
+        <div id="fs-overlay">
+            <button id="fs-btn" onclick="requestFull()">GO FULLSCREEN & WAKE LOCK</button>
+        </div>
+        <div id="countdown-text"></div>
+        <div id="target-rect"></div>
+        <div id="total-timer-display"></div>
+        <div class="action-bar">
+            <button class="bar-btn" id="pause-btn" onclick="handlePause()">Pause</button>
+            <button class="bar-btn" onclick="restartToMenu()" style="color: #ff453a;">Quit</button>
+        </div>
+    </div>
+
+    <script>
+        let config = { total: 0, interval: 0 };
+        let state = {
+            remainingTotal: 0,
+            remainingPhase: 0,
+            isPaused: false,
+            courtOptions: [],
+            diffOptions: []
+        };
+        
+        let gameLoop = null;
+        let countdownLoop = null;
+        let wakeLock = null;
+
+        async function requestWakeLock() {
+            try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); }
+            catch (err) { console.log(err); }
+        }
+
+        function releaseWakeLock() {
+            if (wakeLock) { wakeLock.release(); wakeLock = null; }
+        }
+
+        function requestFull() {
+            const de = document.documentElement;
+            if (de.requestFullscreen) de.requestFullscreen();
+            else if (de.webkitRequestFullscreen) de.webkitRequestFullscreen();
+            document.getElementById('fs-overlay').classList.add('hidden');
+            requestWakeLock();
+        }
+
+        function toggleSelection(btn, type) {
+            btn.classList.toggle('active');
+            const val = btn.dataset.val;
+            const targetArray = type === 'court' ? state.courtOptions : state.diffOptions;
+            const index = targetArray.indexOf(val);
+            if (index > -1) targetArray.splice(index, 1);
+            else targetArray.push(val);
+        }
+
+        function startSetup() {
+            if (state.courtOptions.length === 0 || state.diffOptions.length === 0) {
+                alert("Select Court and Difficulty!"); return;
+            }
+
+            const totalInput = document.getElementById('total-time').value.replace(',', '.');
+            const phaseInput = document.getElementById('phase-time').value.replace(',', '.');
+            config.total = parseFloat(totalInput);
+            config.interval = parseFloat(phaseInput);
+
+            if (isNaN(config.total) || isNaN(config.interval)) {
+                alert("Enter valid numbers!"); return;
+            }
+
+            state.remainingTotal = config.total;
+            state.remainingPhase = config.interval;
+            state.isPaused = false;
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('run-screen').classList.remove('hidden');
+            document.getElementById('fs-overlay').classList.remove('hidden');
+            runCountdown();
+        }
+
+        function runCountdown() {
+            let count = 5;
+            const display = document.getElementById('countdown-text');
+            display.innerText = count;
+            if(countdownLoop) clearInterval(countdownLoop);
+            countdownLoop = setInterval(() => {
+                count--;
+                if (count > 0) display.innerText = count;
+                else { 
+                    clearInterval(countdownLoop);
+                    countdownLoop = null; 
+                    display.innerText = ""; 
+                    document.getElementById('fs-overlay').classList.add('hidden');
+                    beginTraining(); 
+                }
+            }, 1000);
+        }
+
+        function beginTraining() {
+            nextPhase();
+            if(gameLoop) clearInterval(gameLoop);
+            gameLoop = setInterval(() => {
+                if (!state.isPaused) {
+                    state.remainingTotal -= 0.05;
+                    state.remainingPhase -= 0.05;
+                    document.getElementById('total-timer-display').innerText = Math.ceil(Math.max(0, state.remainingTotal));
+                    if (state.remainingPhase <= 0) nextPhase();
+                    if (state.remainingTotal <= 0) finishTraining();
+                }
+            }, 50);
+        }
+
+        function nextPhase() {
+            const rect = document.getElementById('target-rect');
+            rect.style.transition = 'none';
+            rect.style.opacity = '1';
+            
+            const diff = state.diffOptions[Math.floor(Math.random() * state.diffOptions.length)];
+            const court = state.courtOptions[Math.floor(Math.random() * state.courtOptions.length)];
+            const side = Math.random() > 0.5 ? 'left' : 'right';
+
+            rect.style.backgroundColor = diff === 'hard' ? 'var(--hard-color)' : 'var(--easy-color)';
+            
+            const count = state.courtOptions.length;
+            
+            // MATH FIX: Use the actual bar height + safe area to prevent overlap
+            const barElem = document.querySelector('.action-bar');
+            const barHeight = barElem.offsetHeight;
+            const availableHeight = window.innerHeight - barHeight;
+            const segmentHeight = availableHeight / count;
+            
+            rect.style.height = `${segmentHeight}px`;
+            rect.style.left = side === 'left' ? '0' : '50vw';
+            rect.style.right = side === 'right' ? '0' : '50vw';
+
+            const order = ["front", "mid", "back"];
+            const sortedSelected = [...state.courtOptions].sort((a,b) => order.indexOf(a) - order.indexOf(b));
+            const verticalIndex = sortedSelected.indexOf(court);
+
+            rect.style.top = `${verticalIndex * segmentHeight}px`;
+            state.remainingPhase = config.interval;
+
+            setTimeout(() => {
+                if (!state.isPaused && gameLoop) {
+                    rect.style.transition = `opacity ${config.interval}s linear`;
+                    rect.style.opacity = '0';
+                }
+            }, 50);
+        }
+
+        function handlePause() {
+            state.isPaused = !state.isPaused;
+            const rect = document.getElementById('target-rect');
+            const btn = document.getElementById('pause-btn');
+            if (state.isPaused) {
+                btn.innerText = "Resume";
+                const currentOpacity = window.getComputedStyle(rect).opacity;
+                rect.style.transition = 'none';
+                rect.style.opacity = currentOpacity;
+            } else {
+                btn.innerText = "Pause";
+                rect.style.transition = `opacity ${state.remainingPhase}s linear`;
+                rect.style.opacity = '0';
+            }
+        }
+
+        function finishTraining() {
+            clearInterval(gameLoop);
+            gameLoop = null;
+            alert("Workout Complete!");
+            restartToMenu();
+        }
+
+        function restartToMenu() {
+            if(gameLoop) { clearInterval(gameLoop); gameLoop = null; }
+            if(countdownLoop) { clearInterval(countdownLoop); countdownLoop = null; }
+            releaseWakeLock();
+            document.getElementById('run-screen').classList.add('hidden');
+            document.getElementById('setup-screen').classList.remove('hidden');
+            document.getElementById('countdown-text').innerText = "";
+            document.getElementById('total-timer-display').innerText = "";
+            const rect = document.getElementById('target-rect');
+            rect.style.transition = 'none';
+            rect.style.opacity = '0';
+            state.remainingTotal = 0;
+            state.remainingPhase = 0;
+            state.isPaused = false;
+            document.getElementById('pause-btn').innerText = "Pause";
+        }
+    </script>
+</body>
+</html>

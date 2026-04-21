@@ -1,0 +1,8 @@
+{
+  "name": "6 Corners Footwork",
+  "short_name": "6 Corners",
+  "start_url": "./6-corners-footwork.html",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a"
+}
